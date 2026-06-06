@@ -31,7 +31,8 @@ function Reports() {
     queryFn: async () => {
       const start = date + "T00:00:00";
       const end = date + "T23:59:59";
-      const { data: sales = [] } = await supabase.from("sales").select("*").gte("created_at", start).lte("created_at", end);
+      const { data: salesData } = await supabase.from("sales").select("*").gte("created_at", start).lte("created_at", end);
+      const sales = salesData ?? [];
       const { data: closing } = await supabase.from("daily_closings").select("*").eq("closing_date", date).maybeSingle();
       const split = { cash: 0, card: 0, upi: 0, credit: 0 };
       let total = 0, profit = 0;
