@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const inputSchema = z.object({
-  imageBase64: z.string().min(10),
-  mimeType: z.string().default("image/jpeg"),
+  imageBase64: z.string().min(10).max(15_000_000),
+  mimeType: z.string().max(64).default("image/jpeg"),
 });
 
 export const extractMedicineFromImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => inputSchema.parse(d))
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
