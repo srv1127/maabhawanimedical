@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
+import { GuidedMedicineForm, emptyMedicine, type MedicineDraft } from "@/components/medicine-form";
+import { findDuplicates } from "@/lib/dedupe";
 
 export const Route = createFileRoute("/app/inventory")({
   head: () => ({ meta: [{ title: "Inventory — PharmaCore" }] }),
@@ -35,7 +37,7 @@ function Inventory() {
   const canWrite = hasRole(["admin", "pharmacist"]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Partial<Medicine> | null>(null);
+  const [editing, setEditing] = useState<MedicineDraft | null>(null);
   const [stockFor, setStockFor] = useState<Medicine | null>(null);
   const [stockQty, setStockQty] = useState(0);
   const [stockNote, setStockNote] = useState("");
@@ -53,17 +55,45 @@ function Inventory() {
     },
   });
 
-  const save = async () => {
-    if (!editing?.name) return toast.error("Name is required");
-    const payload = { ...editing };
-    delete (payload as any).id;
-    const { error } = editing.id
-      ? await supabase.from("medicines").update(payload).eq("id", editing.id)
-      : await supabase.from("medicines").insert(payload as any);
-    if (error) return toast.error(error.message);
-    toast.success("Saved");
-    setOpen(false); setEditing(null);
+  const closeForm = () => { setOpen(false); setEditing(null); };
+
+  const saveDraft = async (draft: MedicineDraft) => {
+    const payload: any = { ...draft };
+    delete payload.id;
+    const { error } = draft.id
+      ? await supabase.from("medicines").update(payload).eq("id", draft.id)
+      : await supabase.from("medicines").insert(payload);
+    if (error) { toast.error(error.message); return; }
+    toast.success(draft.id ? "Medicine updated" : "Medicine created");
+    closeForm();
     qc.invalidateQueries({ queryKey: ["medicines"] });
+    qc.invalidateQueries({ queryKey: ["medicines-dedupe"] });
+  };
+
+  const mergeInto = async (existingId: string, draft: MedicineDraft) => {
+    // Update only fields user filled (non-empty); add stock as a movement
+    const patch: any = {};
+    const copyIf = (k: keyof MedicineDraft) => {
+      const v = draft[k];
+      if (v !== undefined && v !== null && v !== "" && v !== 0) patch[k] = v;
+    };
+    (["generic_name","brand","manufacturer","batch_no","barcode","hsn_code","unit","pack_size","mrp","purchase_price","selling_price","gst_percent","reorder_level","expiry_date","location"] as const).forEach(copyIf);
+    if (Object.keys(patch).length) {
+      const { error } = await supabase.from("medicines").update(patch).eq("id", existingId);
+      if (error) { toast.error(error.message); return; }
+    }
+    const addQty = Number(draft.stock_qty ?? 0);
+    if (addQty > 0) {
+      const { error } = await supabase.from("stock_movements").insert({
+        medicine_id: existingId, type: "purchase", change_qty: addQty,
+        notes: "Merged from duplicate add", created_by: user!.id,
+      });
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(addQty > 0 ? `Merged: +${addQty} stock added` : "Merged into existing");
+    closeForm();
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+    qc.invalidateQueries({ queryKey: ["medicines-dedupe"] });
   };
 
   const remove = async (id: string) => {
