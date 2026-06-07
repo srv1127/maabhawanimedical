@@ -290,33 +290,3 @@ function Inventory() {
   );
 }
 
-function MedicineForm({ editing, setEditing, onSave }: { editing: Partial<Medicine> | null; setEditing: (m: Partial<Medicine>) => void; onSave: () => void; }) {
-  if (!editing) return null;
-  const f = (k: keyof Medicine, type: "text" | "number" | "date" = "text") => (
-    <Input type={type} value={(editing as any)[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: type === "number" ? Number(e.target.value) : e.target.value })} />
-  );
-  return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader><DialogTitle>{editing.id ? "Edit Medicine" : "Add Medicine"}</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-        <div className="col-span-2"><Label>Name *</Label>{f("name")}</div>
-        <div><Label>Generic name</Label>{f("generic_name")}</div>
-        <div><Label>Brand</Label>{f("brand")}</div>
-        <div><Label>Manufacturer</Label>{f("manufacturer")}</div>
-        <div><Label>Batch No.</Label>{f("batch_no")}</div>
-        <div><Label>HSN Code</Label>{f("hsn_code")}</div>
-        <div><Label>Unit</Label>{f("unit")}</div>
-        <div><Label>Pack Size</Label>{f("pack_size", "number")}</div>
-        <div><Label>MRP (₹)</Label>{f("mrp", "number")}</div>
-        <div><Label>Purchase Price (₹)</Label>{f("purchase_price", "number")}</div>
-        <div><Label>Selling Price (₹)</Label>{f("selling_price", "number")}</div>
-        <div><Label>GST %</Label>{f("gst_percent", "number")}</div>
-        <div><Label>Stock Qty</Label>{f("stock_qty", "number")}</div>
-        <div><Label>Reorder Level</Label>{f("reorder_level", "number")}</div>
-        <div><Label>Expiry Date</Label>{f("expiry_date", "date")}</div>
-        <div><Label>Location</Label>{f("location")}</div>
-      </div>
-      <DialogFooter><Button onClick={onSave}>Save</Button></DialogFooter>
-    </DialogContent>
-  );
-}
