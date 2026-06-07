@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { inr, fmtDate, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Upload, Pencil, Trash2, Search, Download } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -36,6 +36,10 @@ function Inventory() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Medicine> | null>(null);
+  const [stockFor, setStockFor] = useState<Medicine | null>(null);
+  const [stockQty, setStockQty] = useState(0);
+  const [stockNote, setStockNote] = useState("");
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: meds = [], isLoading } = useQuery({
@@ -172,8 +176,9 @@ function Inventory() {
                     <TableCell className="text-right">
                       {canWrite && (
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="size-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(m.id)}><Trash2 className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Add stock" onClick={() => { setStockFor(m); setStockQty(0); setStockNote(""); }}><PackagePlus className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Archive" onClick={() => remove(m.id)}><Trash2 className="size-4" /></Button>
                         </div>
                       )}
                     </TableCell>
