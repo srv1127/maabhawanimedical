@@ -114,6 +114,7 @@ function Inventory() {
           brand: r.brand || null,
           manufacturer: r.manufacturer || null,
           batch_no: r.batch_no || r.batch || null,
+          barcode: r.barcode || null,
           hsn_code: r.hsn_code || r.hsn || null,
           unit: r.unit || "strip",
           pack_size: Number(r.pack_size || 1),
@@ -127,9 +128,40 @@ function Inventory() {
           location: r.location || null,
         })).filter((r) => r.name);
         if (!rows.length) return toast.error("No valid rows");
-        const { error } = await supabase.from("medicines").insert(rows as any);
-        if (error) return toast.error(error.message);
-        toast.success(`Imported ${rows.length} medicines`);
+
+        // Duplicate detection vs existing active medicines
+        const { data: existing } = await supabase
+          .from("medicines")
+          .select("id,name,generic_name,brand,batch_no,barcode")
+          .eq("is_active", true).limit(5000);
+        const list = (existing ?? []) as any[];
+        const fresh: any[] = [];
+        const dupes: { row: any; matchId: string; matchName: string }[] = [];
+        for (const row of rows) {
+          const m = findDuplicates(row, list, { threshold: 0.85, limit: 1 })[0];
+          if (m) dupes.push({ row, matchId: m.item.id, matchName: m.item.name });
+          else fresh.push(row);
+        }
+
+        if (fresh.length) {
+          const { error } = await supabase.from("medicines").insert(fresh as any);
+          if (error) return toast.error(error.message);
+        }
+
+        let merged = 0;
+        if (dupes.length && confirm(`${dupes.length} row(s) look like duplicates of existing medicines. Click OK to merge their stock into the matched items, or Cancel to skip them.`)) {
+          for (const d of dupes) {
+            const qty = Number(d.row.stock_qty || 0);
+            if (qty > 0) {
+              await supabase.from("stock_movements").insert({
+                medicine_id: d.matchId, type: "purchase", change_qty: qty,
+                notes: `CSV merge: ${d.row.name}`, created_by: user!.id,
+              });
+            }
+            merged++;
+          }
+        }
+        toast.success(`Imported ${fresh.length} new · ${merged} merged · ${dupes.length - merged} skipped`);
         qc.invalidateQueries({ queryKey: ["medicines"] });
       },
     });
@@ -158,11 +190,18 @@ function Inventory() {
               <Button asChild variant="outline" size="sm">
                 <Link to="/app/bulk-import"><Sparkles className="size-4 mr-1" />Bulk AI Import</Link>
               </Button>
-              <Dialog open={open} onOpenChange={setOpen}>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => setEditing(emptyMed)}><Plus className="size-4 mr-1" />Add Medicine</Button>
+                  <Button size="sm" onClick={() => { setEditing(emptyMedicine()); setOpen(true); }}><Plus className="size-4 mr-1" />Add Medicine</Button>
                 </DialogTrigger>
-                <MedicineForm editing={editing} setEditing={setEditing} onSave={save} />
+                {editing && (
+                  <GuidedMedicineForm
+                    initial={editing}
+                    onSave={saveDraft}
+                    onMerge={(existing, draft) => mergeInto(existing.id, draft)}
+                    onCancel={closeForm}
+                  />
+                )}
               </Dialog>
             </>
           )}
