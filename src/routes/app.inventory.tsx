@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
+import { GuidedMedicineForm, emptyMedicine, type MedicineDraft } from "@/components/medicine-form";
+import { findDuplicates } from "@/lib/dedupe";
 
 export const Route = createFileRoute("/app/inventory")({
   head: () => ({ meta: [{ title: "Inventory — PharmaCore" }] }),
@@ -35,7 +37,7 @@ function Inventory() {
   const canWrite = hasRole(["admin", "pharmacist"]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Partial<Medicine> | null>(null);
+  const [editing, setEditing] = useState<MedicineDraft | null>(null);
   const [stockFor, setStockFor] = useState<Medicine | null>(null);
   const [stockQty, setStockQty] = useState(0);
   const [stockNote, setStockNote] = useState("");
@@ -53,17 +55,45 @@ function Inventory() {
     },
   });
 
-  const save = async () => {
-    if (!editing?.name) return toast.error("Name is required");
-    const payload = { ...editing };
-    delete (payload as any).id;
-    const { error } = editing.id
-      ? await supabase.from("medicines").update(payload).eq("id", editing.id)
-      : await supabase.from("medicines").insert(payload as any);
-    if (error) return toast.error(error.message);
-    toast.success("Saved");
-    setOpen(false); setEditing(null);
+  const closeForm = () => { setOpen(false); setEditing(null); };
+
+  const saveDraft = async (draft: MedicineDraft) => {
+    const payload: any = { ...draft };
+    delete payload.id;
+    const { error } = draft.id
+      ? await supabase.from("medicines").update(payload).eq("id", draft.id)
+      : await supabase.from("medicines").insert(payload);
+    if (error) { toast.error(error.message); return; }
+    toast.success(draft.id ? "Medicine updated" : "Medicine created");
+    closeForm();
     qc.invalidateQueries({ queryKey: ["medicines"] });
+    qc.invalidateQueries({ queryKey: ["medicines-dedupe"] });
+  };
+
+  const mergeInto = async (existingId: string, draft: MedicineDraft) => {
+    // Update only fields user filled (non-empty); add stock as a movement
+    const patch: any = {};
+    const copyIf = (k: keyof MedicineDraft) => {
+      const v = draft[k];
+      if (v !== undefined && v !== null && v !== "" && v !== 0) patch[k] = v;
+    };
+    (["generic_name","brand","manufacturer","batch_no","barcode","hsn_code","unit","pack_size","mrp","purchase_price","selling_price","gst_percent","reorder_level","expiry_date","location"] as const).forEach(copyIf);
+    if (Object.keys(patch).length) {
+      const { error } = await supabase.from("medicines").update(patch).eq("id", existingId);
+      if (error) { toast.error(error.message); return; }
+    }
+    const addQty = Number(draft.stock_qty ?? 0);
+    if (addQty > 0) {
+      const { error } = await supabase.from("stock_movements").insert({
+        medicine_id: existingId, type: "purchase", change_qty: addQty,
+        notes: "Merged from duplicate add", created_by: user!.id,
+      });
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(addQty > 0 ? `Merged: +${addQty} stock added` : "Merged into existing");
+    closeForm();
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+    qc.invalidateQueries({ queryKey: ["medicines-dedupe"] });
   };
 
   const remove = async (id: string) => {
@@ -84,6 +114,7 @@ function Inventory() {
           brand: r.brand || null,
           manufacturer: r.manufacturer || null,
           batch_no: r.batch_no || r.batch || null,
+          barcode: r.barcode || null,
           hsn_code: r.hsn_code || r.hsn || null,
           unit: r.unit || "strip",
           pack_size: Number(r.pack_size || 1),
@@ -97,9 +128,40 @@ function Inventory() {
           location: r.location || null,
         })).filter((r) => r.name);
         if (!rows.length) return toast.error("No valid rows");
-        const { error } = await supabase.from("medicines").insert(rows as any);
-        if (error) return toast.error(error.message);
-        toast.success(`Imported ${rows.length} medicines`);
+
+        // Duplicate detection vs existing active medicines
+        const { data: existing } = await supabase
+          .from("medicines")
+          .select("id,name,generic_name,brand,batch_no,barcode")
+          .eq("is_active", true).limit(5000);
+        const list = (existing ?? []) as any[];
+        const fresh: any[] = [];
+        const dupes: { row: any; matchId: string; matchName: string }[] = [];
+        for (const row of rows) {
+          const m = findDuplicates(row, list, { threshold: 0.85, limit: 1 })[0];
+          if (m) dupes.push({ row, matchId: m.item.id, matchName: m.item.name });
+          else fresh.push(row);
+        }
+
+        if (fresh.length) {
+          const { error } = await supabase.from("medicines").insert(fresh as any);
+          if (error) return toast.error(error.message);
+        }
+
+        let merged = 0;
+        if (dupes.length && confirm(`${dupes.length} row(s) look like duplicates of existing medicines. Click OK to merge their stock into the matched items, or Cancel to skip them.`)) {
+          for (const d of dupes) {
+            const qty = Number(d.row.stock_qty || 0);
+            if (qty > 0) {
+              await supabase.from("stock_movements").insert({
+                medicine_id: d.matchId, type: "purchase", change_qty: qty,
+                notes: `CSV merge: ${d.row.name}`, created_by: user!.id,
+              });
+            }
+            merged++;
+          }
+        }
+        toast.success(`Imported ${fresh.length} new · ${merged} merged · ${dupes.length - merged} skipped`);
         qc.invalidateQueries({ queryKey: ["medicines"] });
       },
     });
@@ -128,11 +190,18 @@ function Inventory() {
               <Button asChild variant="outline" size="sm">
                 <Link to="/app/bulk-import"><Sparkles className="size-4 mr-1" />Bulk AI Import</Link>
               </Button>
-              <Dialog open={open} onOpenChange={setOpen}>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" onClick={() => setEditing(emptyMed)}><Plus className="size-4 mr-1" />Add Medicine</Button>
+                  <Button size="sm" onClick={() => { setEditing(emptyMedicine()); setOpen(true); }}><Plus className="size-4 mr-1" />Add Medicine</Button>
                 </DialogTrigger>
-                <MedicineForm editing={editing} setEditing={setEditing} onSave={save} />
+                {editing && (
+                  <GuidedMedicineForm
+                    initial={editing}
+                    onSave={saveDraft}
+                    onMerge={(existing, draft) => mergeInto(existing.id, draft)}
+                    onCancel={closeForm}
+                  />
+                )}
               </Dialog>
             </>
           )}
@@ -221,33 +290,3 @@ function Inventory() {
   );
 }
 
-function MedicineForm({ editing, setEditing, onSave }: { editing: Partial<Medicine> | null; setEditing: (m: Partial<Medicine>) => void; onSave: () => void; }) {
-  if (!editing) return null;
-  const f = (k: keyof Medicine, type: "text" | "number" | "date" = "text") => (
-    <Input type={type} value={(editing as any)[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: type === "number" ? Number(e.target.value) : e.target.value })} />
-  );
-  return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader><DialogTitle>{editing.id ? "Edit Medicine" : "Add Medicine"}</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-        <div className="col-span-2"><Label>Name *</Label>{f("name")}</div>
-        <div><Label>Generic name</Label>{f("generic_name")}</div>
-        <div><Label>Brand</Label>{f("brand")}</div>
-        <div><Label>Manufacturer</Label>{f("manufacturer")}</div>
-        <div><Label>Batch No.</Label>{f("batch_no")}</div>
-        <div><Label>HSN Code</Label>{f("hsn_code")}</div>
-        <div><Label>Unit</Label>{f("unit")}</div>
-        <div><Label>Pack Size</Label>{f("pack_size", "number")}</div>
-        <div><Label>MRP (₹)</Label>{f("mrp", "number")}</div>
-        <div><Label>Purchase Price (₹)</Label>{f("purchase_price", "number")}</div>
-        <div><Label>Selling Price (₹)</Label>{f("selling_price", "number")}</div>
-        <div><Label>GST %</Label>{f("gst_percent", "number")}</div>
-        <div><Label>Stock Qty</Label>{f("stock_qty", "number")}</div>
-        <div><Label>Reorder Level</Label>{f("reorder_level", "number")}</div>
-        <div><Label>Expiry Date</Label>{f("expiry_date", "date")}</div>
-        <div><Label>Location</Label>{f("location")}</div>
-      </div>
-      <DialogFooter><Button onClick={onSave}>Save</Button></DialogFooter>
-    </DialogContent>
-  );
-}
