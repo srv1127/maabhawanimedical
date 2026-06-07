@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { inr, fmtDate, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -125,6 +125,9 @@ function Inventory() {
             <>
               <input ref={fileRef} type="file" accept=".csv" hidden onChange={(e) => e.target.files?.[0] && importCSV(e.target.files[0])} />
               <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-4 mr-1" />Import CSV</Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/app/bulk-import"><Sparkles className="size-4 mr-1" />Bulk AI Import</Link>
+              </Button>
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" onClick={() => setEditing(emptyMed)}><Plus className="size-4 mr-1" />Add Medicine</Button>
