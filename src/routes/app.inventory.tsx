@@ -189,6 +189,31 @@ function Inventory() {
           </Table>
         </div>
       </Card>
+
+      <Dialog open={!!stockFor} onOpenChange={(o) => !o && setStockFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add stock — {stockFor?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">Current stock: <span className="font-semibold text-foreground">{stockFor?.stock_qty ?? 0}</span></div>
+            <div><Label>Quantity to add</Label><Input type="number" min={1} value={stockQty} onChange={(e) => setStockQty(Number(e.target.value))} autoFocus /></div>
+            <div><Label>Note (optional)</Label><Input value={stockNote} onChange={(e) => setStockNote(e.target.value)} placeholder="Supplier / invoice ref" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStockFor(null)}>Cancel</Button>
+            <Button disabled={stockQty <= 0} onClick={async () => {
+              if (!stockFor || stockQty <= 0) return;
+              const { error } = await supabase.from("stock_movements").insert({
+                medicine_id: stockFor.id, type: "purchase", change_qty: stockQty,
+                notes: stockNote || "Manual stock-in", created_by: user!.id,
+              });
+              if (error) return toast.error(error.message);
+              toast.success(`+${stockQty} added to ${stockFor.name}`);
+              setStockFor(null);
+              qc.invalidateQueries({ queryKey: ["medicines"] });
+            }}>Add stock</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
