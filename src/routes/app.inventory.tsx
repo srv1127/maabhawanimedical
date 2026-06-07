@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { inr, fmtDate, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Upload, Pencil, Trash2, Search, Download } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -36,6 +36,10 @@ function Inventory() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Medicine> | null>(null);
+  const [stockFor, setStockFor] = useState<Medicine | null>(null);
+  const [stockQty, setStockQty] = useState(0);
+  const [stockNote, setStockNote] = useState("");
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: meds = [], isLoading } = useQuery({
@@ -172,8 +176,9 @@ function Inventory() {
                     <TableCell className="text-right">
                       {canWrite && (
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="size-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(m.id)}><Trash2 className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Add stock" onClick={() => { setStockFor(m); setStockQty(0); setStockNote(""); }}><PackagePlus className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Archive" onClick={() => remove(m.id)}><Trash2 className="size-4" /></Button>
                         </div>
                       )}
                     </TableCell>
@@ -184,6 +189,31 @@ function Inventory() {
           </Table>
         </div>
       </Card>
+
+      <Dialog open={!!stockFor} onOpenChange={(o) => !o && setStockFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add stock — {stockFor?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">Current stock: <span className="font-semibold text-foreground">{stockFor?.stock_qty ?? 0}</span></div>
+            <div><Label>Quantity to add</Label><Input type="number" min={1} value={stockQty} onChange={(e) => setStockQty(Number(e.target.value))} autoFocus /></div>
+            <div><Label>Note (optional)</Label><Input value={stockNote} onChange={(e) => setStockNote(e.target.value)} placeholder="Supplier / invoice ref" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStockFor(null)}>Cancel</Button>
+            <Button disabled={stockQty <= 0} onClick={async () => {
+              if (!stockFor || stockQty <= 0) return;
+              const { error } = await supabase.from("stock_movements").insert({
+                medicine_id: stockFor.id, type: "purchase", change_qty: stockQty,
+                notes: stockNote || "Manual stock-in", created_by: user!.id,
+              });
+              if (error) return toast.error(error.message);
+              toast.success(`+${stockQty} added to ${stockFor.name}`);
+              setStockFor(null);
+              qc.invalidateQueries({ queryKey: ["medicines"] });
+            }}>Add stock</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
