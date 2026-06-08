@@ -11,11 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { inr, fmtDate, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles, Archive, X } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
 import { GuidedMedicineForm, emptyMedicine, type MedicineDraft } from "@/components/medicine-form";
 import { findDuplicates } from "@/lib/dedupe";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/app/inventory")({
   head: () => ({ meta: [{ title: "Inventory — PharmaCore" }] }),
@@ -35,14 +36,19 @@ function Inventory() {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const canWrite = hasRole(["admin", "pharmacist"]);
+  const isAdmin = hasRole(["admin"]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MedicineDraft | null>(null);
   const [stockFor, setStockFor] = useState<Medicine | null>(null);
   const [stockQty, setStockQty] = useState(0);
   const [stockNote, setStockNote] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = (ids: string[], all: boolean) => setSelected(all ? new Set(ids) : new Set());
 
   const { data: meds = [], isLoading } = useQuery({
     queryKey: ["medicines", search],
@@ -96,11 +102,41 @@ function Inventory() {
     qc.invalidateQueries({ queryKey: ["medicines-dedupe"] });
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this medicine?")) return;
-    const { error } = await supabase.from("medicines").update({ is_active: false }).eq("id", id);
+  const archive = async (ids: string[]) => {
+    if (!confirm(`Archive ${ids.length} medicine(s)? They'll be hidden but kept for reporting.`)) return;
+    const { error } = await supabase.from("medicines").update({ is_active: false }).in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success("Archived");
+    toast.success(`Archived ${ids.length}`);
+    setSelected(new Set());
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+  };
+
+  const hardDelete = async (ids: string[]) => {
+    if (!isAdmin) return toast.error("Admin only");
+    if (!confirm(`PERMANENTLY delete ${ids.length} medicine(s)? Stock movements will also be removed. Medicines linked to past sales cannot be deleted — archive those instead.`)) return;
+    const { error } = await supabase.from("medicines").delete().in("id", ids);
+    if (error) return toast.error(`Delete failed: ${error.message}. Try Archive instead for items with sales history.`);
+    toast.success(`Deleted ${ids.length} permanently`);
+    setSelected(new Set());
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+  };
+
+  const undoImport = async (insertedIds: string[]) => {
+    if (!insertedIds.length) return;
+    const { error } = await supabase.from("medicines").delete().in("id", insertedIds);
+    if (error) return toast.error(`Undo failed: ${error.message}`);
+    toast.success(`Reverted ${insertedIds.length} imported item(s)`);
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+  };
+
+  const undoMovement = async (movementId: string, medicineId: string, originalQty: number) => {
+    // Insert compensating movement (triggers update medicines.stock_qty)
+    const { error } = await supabase.from("stock_movements").insert({
+      medicine_id: medicineId, type: "adjustment", change_qty: -originalQty,
+      notes: `Undo of movement ${movementId}`, created_by: user!.id,
+    });
+    if (error) return toast.error(`Undo failed: ${error.message}`);
+    toast.success(`Reverted ${originalQty > 0 ? "+" : ""}${originalQty}`);
     qc.invalidateQueries({ queryKey: ["medicines"] });
   };
 
@@ -143,9 +179,11 @@ function Inventory() {
           else fresh.push(row);
         }
 
+        let insertedIds: string[] = [];
         if (fresh.length) {
-          const { error } = await supabase.from("medicines").insert(fresh as any);
+          const { data: ins, error } = await supabase.from("medicines").insert(fresh as any).select("id");
           if (error) return toast.error(error.message);
+          insertedIds = (ins ?? []).map((r: any) => r.id);
         }
 
         let merged = 0;
@@ -161,7 +199,14 @@ function Inventory() {
             merged++;
           }
         }
-        toast.success(`Imported ${fresh.length} new · ${merged} merged · ${dupes.length - merged} skipped`);
+        if (insertedIds.length) {
+          toast.success(`Imported ${fresh.length} new · ${merged} merged · ${dupes.length - merged} skipped`, {
+            action: { label: "Undo new", onClick: () => undoImport(insertedIds) },
+            duration: 15000,
+          });
+        } else {
+          toast.success(`Imported 0 new · ${merged} merged · ${dupes.length - merged} skipped`);
+        }
         qc.invalidateQueries({ queryKey: ["medicines"] });
       },
     });
@@ -182,6 +227,16 @@ function Inventory() {
           <p className="text-sm text-muted-foreground">{meds.length} items</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canWrite && selected.size > 0 && (
+            <>
+              <span className="text-sm self-center text-muted-foreground">{selected.size} selected</span>
+              <Button variant="outline" size="sm" onClick={() => archive([...selected])}><Archive className="size-4 mr-1" />Archive</Button>
+              {isAdmin && (
+                <Button variant="destructive" size="sm" onClick={() => hardDelete([...selected])}><Trash2 className="size-4 mr-1" />Delete</Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}><X className="size-4 mr-1" />Clear</Button>
+            </>
+          )}
           <Button variant="outline" size="sm" onClick={exportCSV}><Download className="size-4 mr-1" />Export</Button>
           {canWrite && (
             <>
@@ -217,6 +272,15 @@ function Inventory() {
           <Table>
             <TableHeader>
               <TableRow>
+                {canWrite && (
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={meds.length > 0 && selected.size === meds.length}
+                      onCheckedChange={(v) => toggleAll(meds.map((m) => m.id), !!v)}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Name</TableHead><TableHead>Batch</TableHead>
                 <TableHead className="text-right">MRP</TableHead><TableHead className="text-right">Sell</TableHead>
                 <TableHead className="text-right">GST</TableHead><TableHead className="text-right">Stock</TableHead>
@@ -224,12 +288,17 @@ function Inventory() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-              {!isLoading && meds.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">No medicines yet.</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+              {!isLoading && meds.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No medicines yet.</TableCell></TableRow>}
               {meds.map((m) => {
                 const exp = daysUntil(m.expiry_date);
                 return (
-                  <TableRow key={m.id}>
+                  <TableRow key={m.id} data-state={selected.has(m.id) ? "selected" : undefined}>
+                    {canWrite && (
+                      <TableCell>
+                        <Checkbox checked={selected.has(m.id)} onCheckedChange={() => toggleSel(m.id)} aria-label={`Select ${m.name}`} />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="font-medium">{m.name}</div>
                       <div className="text-xs text-muted-foreground">{m.generic_name ?? m.brand ?? ""}</div>
@@ -250,7 +319,10 @@ function Inventory() {
                         <div className="flex gap-1 justify-end">
                           <Button size="icon" variant="ghost" title="Add stock" onClick={() => { setStockFor(m); setStockQty(0); setStockNote(""); }}><PackagePlus className="size-4" /></Button>
                           <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="size-4" /></Button>
-                          <Button size="icon" variant="ghost" title="Archive" onClick={() => remove(m.id)}><Trash2 className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Archive (hide, keep history)" onClick={() => archive([m.id])}><Archive className="size-4" /></Button>
+                          {isAdmin && (
+                            <Button size="icon" variant="ghost" title="Delete permanently" onClick={() => hardDelete([m.id])}><Trash2 className="size-4 text-destructive" /></Button>
+                          )}
                         </div>
                       )}
                     </TableCell>
@@ -274,12 +346,17 @@ function Inventory() {
             <Button variant="outline" onClick={() => setStockFor(null)}>Cancel</Button>
             <Button disabled={stockQty <= 0} onClick={async () => {
               if (!stockFor || stockQty <= 0) return;
-              const { error } = await supabase.from("stock_movements").insert({
-                medicine_id: stockFor.id, type: "purchase", change_qty: stockQty,
+              const med = stockFor;
+              const addedQty = stockQty;
+              const { data: ins, error } = await supabase.from("stock_movements").insert({
+                medicine_id: med.id, type: "purchase", change_qty: addedQty,
                 notes: stockNote || "Manual stock-in", created_by: user!.id,
-              });
+              }).select("id").single();
               if (error) return toast.error(error.message);
-              toast.success(`+${stockQty} added to ${stockFor.name}`);
+              toast.success(`+${addedQty} added to ${med.name}`, {
+                action: { label: "Undo", onClick: () => undoMovement(ins!.id, med.id, addedQty) },
+                duration: 12000,
+              });
               setStockFor(null);
               qc.invalidateQueries({ queryKey: ["medicines"] });
             }}>Add stock</Button>
