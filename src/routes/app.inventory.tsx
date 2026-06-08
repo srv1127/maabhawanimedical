@@ -346,12 +346,17 @@ function Inventory() {
             <Button variant="outline" onClick={() => setStockFor(null)}>Cancel</Button>
             <Button disabled={stockQty <= 0} onClick={async () => {
               if (!stockFor || stockQty <= 0) return;
-              const { error } = await supabase.from("stock_movements").insert({
-                medicine_id: stockFor.id, type: "purchase", change_qty: stockQty,
+              const med = stockFor;
+              const addedQty = stockQty;
+              const { data: ins, error } = await supabase.from("stock_movements").insert({
+                medicine_id: med.id, type: "purchase", change_qty: addedQty,
                 notes: stockNote || "Manual stock-in", created_by: user!.id,
-              });
+              }).select("id").single();
               if (error) return toast.error(error.message);
-              toast.success(`+${stockQty} added to ${stockFor.name}`);
+              toast.success(`+${addedQty} added to ${med.name}`, {
+                action: { label: "Undo", onClick: () => undoMovement(ins!.id, med.id, addedQty) },
+                duration: 12000,
+              });
               setStockFor(null);
               qc.invalidateQueries({ queryKey: ["medicines"] });
             }}>Add stock</Button>
