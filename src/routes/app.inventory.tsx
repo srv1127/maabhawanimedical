@@ -179,9 +179,11 @@ function Inventory() {
           else fresh.push(row);
         }
 
+        let insertedIds: string[] = [];
         if (fresh.length) {
-          const { error } = await supabase.from("medicines").insert(fresh as any);
+          const { data: ins, error } = await supabase.from("medicines").insert(fresh as any).select("id");
           if (error) return toast.error(error.message);
+          insertedIds = (ins ?? []).map((r: any) => r.id);
         }
 
         let merged = 0;
