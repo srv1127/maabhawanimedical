@@ -272,6 +272,15 @@ function Inventory() {
           <Table>
             <TableHeader>
               <TableRow>
+                {canWrite && (
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={meds.length > 0 && selected.size === meds.length}
+                      onCheckedChange={(v) => toggleAll(meds.map((m) => m.id), !!v)}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Name</TableHead><TableHead>Batch</TableHead>
                 <TableHead className="text-right">MRP</TableHead><TableHead className="text-right">Sell</TableHead>
                 <TableHead className="text-right">GST</TableHead><TableHead className="text-right">Stock</TableHead>
@@ -279,12 +288,17 @@ function Inventory() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-              {!isLoading && meds.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">No medicines yet.</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+              {!isLoading && meds.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No medicines yet.</TableCell></TableRow>}
               {meds.map((m) => {
                 const exp = daysUntil(m.expiry_date);
                 return (
-                  <TableRow key={m.id}>
+                  <TableRow key={m.id} data-state={selected.has(m.id) ? "selected" : undefined}>
+                    {canWrite && (
+                      <TableCell>
+                        <Checkbox checked={selected.has(m.id)} onCheckedChange={() => toggleSel(m.id)} aria-label={`Select ${m.name}`} />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="font-medium">{m.name}</div>
                       <div className="text-xs text-muted-foreground">{m.generic_name ?? m.brand ?? ""}</div>
@@ -305,7 +319,10 @@ function Inventory() {
                         <div className="flex gap-1 justify-end">
                           <Button size="icon" variant="ghost" title="Add stock" onClick={() => { setStockFor(m); setStockQty(0); setStockNote(""); }}><PackagePlus className="size-4" /></Button>
                           <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="size-4" /></Button>
-                          <Button size="icon" variant="ghost" title="Archive" onClick={() => remove(m.id)}><Trash2 className="size-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Archive (hide, keep history)" onClick={() => archive([m.id])}><Archive className="size-4" /></Button>
+                          {isAdmin && (
+                            <Button size="icon" variant="ghost" title="Delete permanently" onClick={() => hardDelete([m.id])}><Trash2 className="size-4 text-destructive" /></Button>
+                          )}
                         </div>
                       )}
                     </TableCell>
