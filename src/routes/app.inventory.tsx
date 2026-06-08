@@ -227,6 +227,16 @@ function Inventory() {
           <p className="text-sm text-muted-foreground">{meds.length} items</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canWrite && selected.size > 0 && (
+            <>
+              <span className="text-sm self-center text-muted-foreground">{selected.size} selected</span>
+              <Button variant="outline" size="sm" onClick={() => archive([...selected])}><Archive className="size-4 mr-1" />Archive</Button>
+              {isAdmin && (
+                <Button variant="destructive" size="sm" onClick={() => hardDelete([...selected])}><Trash2 className="size-4 mr-1" />Delete</Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}><X className="size-4 mr-1" />Clear</Button>
+            </>
+          )}
           <Button variant="outline" size="sm" onClick={exportCSV}><Download className="size-4 mr-1" />Export</Button>
           {canWrite && (
             <>
