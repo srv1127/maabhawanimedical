@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS med_write_admin_pharm ON public.medicines;
+CREATE POLICY med_write_staff ON public.medicines FOR ALL TO authenticated USING (public.is_staff(auth.uid())) WITH CHECK (public.is_staff(auth.uid()));
