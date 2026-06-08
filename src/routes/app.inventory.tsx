@@ -11,11 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { inr, fmtDate, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Search, Download, PackagePlus, Sparkles, Archive, X } from "lucide-react";
 import Papa from "papaparse";
 import { useAuth } from "@/hooks/use-auth";
 import { GuidedMedicineForm, emptyMedicine, type MedicineDraft } from "@/components/medicine-form";
 import { findDuplicates } from "@/lib/dedupe";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/app/inventory")({
   head: () => ({ meta: [{ title: "Inventory — PharmaCore" }] }),
