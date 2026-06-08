@@ -44,7 +44,7 @@ function AppLayout() {
           <Pill className="size-5 text-primary-foreground" />
         </div>
         <div>
-          <div className="font-bold leading-tight">PharmaCore</div>
+          <div className="font-bold leading-tight">Maa Bhawani Medical</div>
           <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">{roles[0] ?? "staff"}</div>
         </div>
       </div>
