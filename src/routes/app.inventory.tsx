@@ -36,14 +36,19 @@ function Inventory() {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const canWrite = hasRole(["admin", "pharmacist"]);
+  const isAdmin = hasRole(["admin"]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MedicineDraft | null>(null);
   const [stockFor, setStockFor] = useState<Medicine | null>(null);
   const [stockQty, setStockQty] = useState(0);
   const [stockNote, setStockNote] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = (ids: string[], all: boolean) => setSelected(all ? new Set(ids) : new Set());
 
   const { data: meds = [], isLoading } = useQuery({
     queryKey: ["medicines", search],
