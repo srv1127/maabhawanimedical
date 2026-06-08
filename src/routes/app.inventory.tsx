@@ -102,11 +102,41 @@ function Inventory() {
     qc.invalidateQueries({ queryKey: ["medicines-dedupe"] });
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this medicine?")) return;
-    const { error } = await supabase.from("medicines").update({ is_active: false }).eq("id", id);
+  const archive = async (ids: string[]) => {
+    if (!confirm(`Archive ${ids.length} medicine(s)? They'll be hidden but kept for reporting.`)) return;
+    const { error } = await supabase.from("medicines").update({ is_active: false }).in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success("Archived");
+    toast.success(`Archived ${ids.length}`);
+    setSelected(new Set());
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+  };
+
+  const hardDelete = async (ids: string[]) => {
+    if (!isAdmin) return toast.error("Admin only");
+    if (!confirm(`PERMANENTLY delete ${ids.length} medicine(s)? Stock movements will also be removed. Medicines linked to past sales cannot be deleted — archive those instead.`)) return;
+    const { error } = await supabase.from("medicines").delete().in("id", ids);
+    if (error) return toast.error(`Delete failed: ${error.message}. Try Archive instead for items with sales history.`);
+    toast.success(`Deleted ${ids.length} permanently`);
+    setSelected(new Set());
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+  };
+
+  const undoImport = async (insertedIds: string[]) => {
+    if (!insertedIds.length) return;
+    const { error } = await supabase.from("medicines").delete().in("id", insertedIds);
+    if (error) return toast.error(`Undo failed: ${error.message}`);
+    toast.success(`Reverted ${insertedIds.length} imported item(s)`);
+    qc.invalidateQueries({ queryKey: ["medicines"] });
+  };
+
+  const undoMovement = async (movementId: string, medicineId: string, originalQty: number) => {
+    // Insert compensating movement (triggers update medicines.stock_qty)
+    const { error } = await supabase.from("stock_movements").insert({
+      medicine_id: medicineId, type: "adjustment", change_qty: -originalQty,
+      notes: `Undo of movement ${movementId}`, created_by: user!.id,
+    });
+    if (error) return toast.error(`Undo failed: ${error.message}`);
+    toast.success(`Reverted ${originalQty > 0 ? "+" : ""}${originalQty}`);
     qc.invalidateQueries({ queryKey: ["medicines"] });
   };
 
