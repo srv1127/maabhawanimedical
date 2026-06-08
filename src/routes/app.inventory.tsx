@@ -199,7 +199,14 @@ function Inventory() {
             merged++;
           }
         }
-        toast.success(`Imported ${fresh.length} new · ${merged} merged · ${dupes.length - merged} skipped`);
+        if (insertedIds.length) {
+          toast.success(`Imported ${fresh.length} new · ${merged} merged · ${dupes.length - merged} skipped`, {
+            action: { label: "Undo new", onClick: () => undoImport(insertedIds) },
+            duration: 15000,
+          });
+        } else {
+          toast.success(`Imported 0 new · ${merged} merged · ${dupes.length - merged} skipped`);
+        }
         qc.invalidateQueries({ queryKey: ["medicines"] });
       },
     });
