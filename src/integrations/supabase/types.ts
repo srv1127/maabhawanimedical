@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      advisor_sessions: {
+        Row: {
+          advice: string | null
+          age_years: number | null
+          allergies: string | null
+          assessment: string | null
+          conditions: string | null
+          created_at: string
+          created_by: string
+          id: string
+          inventory_size: number | null
+          pregnant: boolean | null
+          red_flags: string[] | null
+          sex: string | null
+          symptoms: string
+        }
+        Insert: {
+          advice?: string | null
+          age_years?: number | null
+          allergies?: string | null
+          assessment?: string | null
+          conditions?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          inventory_size?: number | null
+          pregnant?: boolean | null
+          red_flags?: string[] | null
+          sex?: string | null
+          symptoms: string
+        }
+        Update: {
+          advice?: string | null
+          age_years?: number | null
+          allergies?: string | null
+          assessment?: string | null
+          conditions?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          inventory_size?: number | null
+          pregnant?: boolean | null
+          red_flags?: string[] | null
+          sex?: string | null
+          symptoms?: string
+        }
+        Relationships: []
+      }
+      advisor_suggestions: {
+        Row: {
+          cautions: string | null
+          confidence: string | null
+          created_at: string
+          dosage: string | null
+          duration: string | null
+          id: string
+          medicine_id: string | null
+          name: string
+          rank: number
+          reason: string | null
+          selling_price: number
+          session_id: string
+          stock_qty: number
+        }
+        Insert: {
+          cautions?: string | null
+          confidence?: string | null
+          created_at?: string
+          dosage?: string | null
+          duration?: string | null
+          id?: string
+          medicine_id?: string | null
+          name: string
+          rank?: number
+          reason?: string | null
+          selling_price?: number
+          session_id: string
+          stock_qty?: number
+        }
+        Update: {
+          cautions?: string | null
+          confidence?: string | null
+          created_at?: string
+          dosage?: string | null
+          duration?: string | null
+          id?: string
+          medicine_id?: string | null
+          name?: string
+          rank?: number
+          reason?: string | null
+          selling_price?: number
+          session_id?: string
+          stock_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advisor_suggestions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "advisor_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
