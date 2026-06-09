@@ -22,6 +22,7 @@ import { Route as AppInvoicesRouteImport } from './routes/app.invoices'
 import { Route as AppInventoryRouteImport } from './routes/app.inventory'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppBulkImportRouteImport } from './routes/app.bulk-import'
+import { Route as AppAdvisorRouteImport } from './routes/app.advisor'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -88,11 +89,17 @@ const AppBulkImportRoute = AppBulkImportRouteImport.update({
   path: '/bulk-import',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdvisorRoute = AppAdvisorRouteImport.update({
+  id: '/advisor',
+  path: '/advisor',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/app/advisor': typeof AppAdvisorRoute
   '/app/bulk-import': typeof AppBulkImportRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/inventory': typeof AppInventoryRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/app/advisor': typeof AppAdvisorRoute
   '/app/bulk-import': typeof AppBulkImportRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/inventory': typeof AppInventoryRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/app/advisor': typeof AppAdvisorRoute
   '/app/bulk-import': typeof AppBulkImportRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/inventory': typeof AppInventoryRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/auth'
+    | '/app/advisor'
     | '/app/bulk-import'
     | '/app/dashboard'
     | '/app/inventory'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/app/advisor'
     | '/app/bulk-import'
     | '/app/dashboard'
     | '/app/inventory'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/auth'
+    | '/app/advisor'
     | '/app/bulk-import'
     | '/app/dashboard'
     | '/app/inventory'
@@ -280,10 +292,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBulkImportRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/advisor': {
+      id: '/app/advisor'
+      path: '/advisor'
+      fullPath: '/app/advisor'
+      preLoaderRoute: typeof AppAdvisorRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAdvisorRoute: typeof AppAdvisorRoute
   AppBulkImportRoute: typeof AppBulkImportRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppInventoryRoute: typeof AppInventoryRoute
@@ -297,6 +317,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdvisorRoute: AppAdvisorRoute,
   AppBulkImportRoute: AppBulkImportRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppInventoryRoute: AppInventoryRoute,
