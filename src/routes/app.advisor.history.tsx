@@ -51,7 +51,7 @@ function HistoryPage() {
   const [loading, setLoading] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  useState(() => {
+  useEffect(() => {
     let mounted = true;
     setLoading(true);
     fetchHistory({ data: {} })
@@ -61,7 +61,7 @@ function HistoryPage() {
       .catch((e: any) => toast.error(e?.message ?? "Failed to load history"))
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  });
+  }, [fetchHistory]);
 
   const confColor = (c: string) =>
     c === "high" ? "default" : c === "low" ? "secondary" : "outline";
