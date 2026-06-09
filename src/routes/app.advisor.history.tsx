@@ -54,7 +54,7 @@ function HistoryPage() {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetchHistory({ data: {} })
+    fetchHistory()
       .then((r) => {
         if (mounted) setSessions((r as any).sessions ?? []);
       })
