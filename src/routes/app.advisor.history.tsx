@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listAdvisorHistory } from "@/lib/symptom-advisor.functions";
 import { Card } from "@/components/ui/card";
