@@ -45,7 +45,7 @@ export const suggestMedicines = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: meds, error } = await supabase
       .from("medicines")
       .select("id,name,generic_name,brand,manufacturer,unit,pack_size,mrp,selling_price,stock_qty,expiry_date")
@@ -116,11 +116,64 @@ ${JSON.stringify(inventory)}`;
           })
       : [];
 
-    return {
+    const result = {
       assessment: typeof parsed.assessment === "string" ? parsed.assessment : "",
       red_flags: Array.isArray(parsed.red_flags) ? parsed.red_flags.map(String) : [],
       advice: typeof parsed.advice === "string" ? parsed.advice : "",
       suggestions,
       inventory_size: inventory.length,
     };
+
+    // Persist session + suggestions
+    const { data: sessionRow, error: sessErr } = await supabase
+      .from("advisor_sessions")
+      .insert({
+        created_by: userId,
+        symptoms: data.symptoms,
+        age_years: data.ageYears ?? null,
+        sex: data.sex ?? null,
+        pregnant: data.pregnant ?? false,
+        allergies: data.allergies ?? null,
+        conditions: data.conditions ?? null,
+        assessment: result.assessment,
+        red_flags: result.red_flags,
+        advice: result.advice,
+        inventory_size: result.inventory_size,
+      })
+      .select("id")
+      .single();
+    if (sessErr) {
+      console.error("[advisor] session insert error", sessErr);
+    } else if (sessionRow?.id && suggestions.length > 0) {
+      const rows = suggestions.map((s: any, i: number) => ({
+        session_id: sessionRow.id,
+        medicine_id: s.medicine_id,
+        name: s.name,
+        stock_qty: s.stock_qty,
+        selling_price: s.selling_price,
+        reason: s.reason,
+        dosage: s.dosage,
+        duration: s.duration,
+        cautions: s.cautions,
+        confidence: s.confidence,
+        rank: i + 1,
+      }));
+      const { error: sugErr } = await supabase.from("advisor_suggestions").insert(rows);
+      if (sugErr) console.error("[advisor] suggestions insert error", sugErr);
+    }
+
+    return result;
+  });
+
+export const listAdvisorHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: sessions, error } = await supabase
+      .from("advisor_sessions")
+      .select("*, advisor_suggestions(*)")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return { sessions: sessions ?? [] };
   });
