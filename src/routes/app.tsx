@@ -14,6 +14,7 @@ const nav = [
   { to: "/app/inventory", icon: Package, label: "Inventory" },
   { to: "/app/sales", icon: ShoppingCart, label: "New Sale (POS)" },
   { to: "/app/advisor", icon: Stethoscope, label: "AI Advisor" },
+  { to: "/app/advisor/history", icon: History, label: "Advisor History" },
   { to: "/app/bulk-import", icon: Sparkles, label: "Bulk AI Import" },
   { to: "/app/invoices", icon: FileText, label: "Invoices" },
   { to: "/app/stock-count", icon: ClipboardCheck, label: "Stock Count" },
