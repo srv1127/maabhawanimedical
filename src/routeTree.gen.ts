@@ -23,6 +23,7 @@ import { Route as AppInventoryRouteImport } from './routes/app.inventory'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppBulkImportRouteImport } from './routes/app.bulk-import'
 import { Route as AppAdvisorRouteImport } from './routes/app.advisor'
+import { Route as AppAdvisorHistoryRouteImport } from './routes/app.advisor.history'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -94,12 +95,17 @@ const AppAdvisorRoute = AppAdvisorRouteImport.update({
   path: '/advisor',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdvisorHistoryRoute = AppAdvisorHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppAdvisorRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/app/advisor': typeof AppAdvisorRoute
+  '/app/advisor': typeof AppAdvisorRouteWithChildren
   '/app/bulk-import': typeof AppBulkImportRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/inventory': typeof AppInventoryRoute
@@ -110,11 +116,12 @@ export interface FileRoutesByFullPath {
   '/app/stock-count': typeof AppStockCountRoute
   '/app/users': typeof AppUsersRoute
   '/app/': typeof AppIndexRoute
+  '/app/advisor/history': typeof AppAdvisorHistoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/app/advisor': typeof AppAdvisorRoute
+  '/app/advisor': typeof AppAdvisorRouteWithChildren
   '/app/bulk-import': typeof AppBulkImportRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/inventory': typeof AppInventoryRoute
@@ -125,13 +132,14 @@ export interface FileRoutesByTo {
   '/app/stock-count': typeof AppStockCountRoute
   '/app/users': typeof AppUsersRoute
   '/app': typeof AppIndexRoute
+  '/app/advisor/history': typeof AppAdvisorHistoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/app/advisor': typeof AppAdvisorRoute
+  '/app/advisor': typeof AppAdvisorRouteWithChildren
   '/app/bulk-import': typeof AppBulkImportRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/inventory': typeof AppInventoryRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/app/stock-count': typeof AppStockCountRoute
   '/app/users': typeof AppUsersRoute
   '/app/': typeof AppIndexRoute
+  '/app/advisor/history': typeof AppAdvisorHistoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/app/stock-count'
     | '/app/users'
     | '/app/'
+    | '/app/advisor/history'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/app/stock-count'
     | '/app/users'
     | '/app'
+    | '/app/advisor/history'
   id:
     | '__root__'
     | '/'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/app/stock-count'
     | '/app/users'
     | '/app/'
+    | '/app/advisor/history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -299,11 +311,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdvisorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/advisor/history': {
+      id: '/app/advisor/history'
+      path: '/history'
+      fullPath: '/app/advisor/history'
+      preLoaderRoute: typeof AppAdvisorHistoryRouteImport
+      parentRoute: typeof AppAdvisorRoute
+    }
   }
 }
 
+interface AppAdvisorRouteChildren {
+  AppAdvisorHistoryRoute: typeof AppAdvisorHistoryRoute
+}
+
+const AppAdvisorRouteChildren: AppAdvisorRouteChildren = {
+  AppAdvisorHistoryRoute: AppAdvisorHistoryRoute,
+}
+
+const AppAdvisorRouteWithChildren = AppAdvisorRoute._addFileChildren(
+  AppAdvisorRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppAdvisorRoute: typeof AppAdvisorRoute
+  AppAdvisorRoute: typeof AppAdvisorRouteWithChildren
   AppBulkImportRoute: typeof AppBulkImportRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppInventoryRoute: typeof AppInventoryRoute
@@ -317,7 +348,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdvisorRoute: AppAdvisorRoute,
+  AppAdvisorRoute: AppAdvisorRouteWithChildren,
   AppBulkImportRoute: AppBulkImportRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppInventoryRoute: AppInventoryRoute,
@@ -340,3 +371,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
