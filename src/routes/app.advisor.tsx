@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Stethoscope, AlertTriangle, Sparkles, Loader2, ShoppingCart } from "lucide-react";
+import { Stethoscope, AlertTriangle, Sparkles, Loader2, ShoppingCart, History } from "lucide-react";
 import { toast } from "sonner";
 import { inr } from "@/lib/format";
 
