@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Pill, LayoutDashboard, Package, ShoppingCart, FileText, ClipboardCheck, BarChart3, ScanLine, Users, LogOut, Menu, Sparkles } from "lucide-react";
+import { Pill, LayoutDashboard, Package, ShoppingCart, FileText, ClipboardCheck, BarChart3, ScanLine, Users, LogOut, Menu, Sparkles, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ const nav = [
   { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/app/inventory", icon: Package, label: "Inventory" },
   { to: "/app/sales", icon: ShoppingCart, label: "New Sale (POS)" },
+  { to: "/app/advisor", icon: Stethoscope, label: "AI Advisor" },
   { to: "/app/bulk-import", icon: Sparkles, label: "Bulk AI Import" },
   { to: "/app/invoices", icon: FileText, label: "Invoices" },
   { to: "/app/stock-count", icon: ClipboardCheck, label: "Stock Count" },
