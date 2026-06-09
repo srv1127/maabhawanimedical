@@ -82,7 +82,12 @@ function Advisor() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Stethoscope className="size-6" /> AI Symptom Advisor</h1>
           <p className="text-sm text-muted-foreground">Describe the patient's problem — AI suggests medicines from your in-stock inventory.</p>
         </div>
-        <Badge variant="outline" className="text-xs"><Sparkles className="size-3 mr-1" /> Pharmacist must verify</Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-xs"><Sparkles className="size-3 mr-1" /> Pharmacist must verify</Badge>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/app/advisor/history"><History className="size-4 mr-1" /> View history</Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="p-4 space-y-4">
