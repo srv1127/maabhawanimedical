@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Pill, LayoutDashboard, Package, ShoppingCart, FileText, ClipboardCheck, BarChart3, ScanLine, Users, LogOut, Menu, Sparkles, Stethoscope } from "lucide-react";
+import { Pill, LayoutDashboard, Package, ShoppingCart, FileText, ClipboardCheck, BarChart3, ScanLine, Users, LogOut, Menu, Sparkles, Stethoscope, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
