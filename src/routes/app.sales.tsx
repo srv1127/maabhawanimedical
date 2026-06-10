@@ -55,17 +55,21 @@ function SalesPOS() {
   const totals = useMemo(() => {
     let subtotal = 0, tax = 0, profit = 0;
     cart.forEach((it) => {
-      const gross = it.selling_price * it.qty;
-      const lineDisc = it.discount;
-      const taxable = gross - lineDisc;
-      const gst = (taxable * it.gst_percent) / (100 + it.gst_percent); // price-inclusive GST
-      const net = taxable;
-      subtotal += net - gst;
+      const gross = round2(it.selling_price * it.qty);
+      const lineDisc = round2(it.discount);
+      const taxable = round2(gross - lineDisc);
+      const gst = round2((taxable * it.gst_percent) / (100 + it.gst_percent)); // price-inclusive GST
+      subtotal += round2(taxable - gst);
       tax += gst;
-      profit += (it.selling_price - it.purchase_price) * it.qty - lineDisc;
+      profit += round2((it.selling_price - it.purchase_price) * it.qty - lineDisc);
     });
-    const total = Math.max(0, subtotal + tax - orderDiscount);
-    return { subtotal, tax, total, profit: profit - orderDiscount, discount: orderDiscount + cart.reduce((s, x) => s + x.discount, 0) };
+    subtotal = round2(subtotal); tax = round2(tax);
+    const total = Math.max(0, round2(subtotal + tax - orderDiscount));
+    return {
+      subtotal, tax, total,
+      profit: round2(profit - orderDiscount),
+      discount: round2(orderDiscount + cart.reduce((s, x) => s + x.discount, 0)),
+    };
   }, [cart, orderDiscount]);
 
   const checkout = async () => {
@@ -89,7 +93,7 @@ function SalesPOS() {
         sale_id: sale.id, medicine_id: it.id, qty: it.qty,
         unit_price: it.selling_price, purchase_price: it.purchase_price,
         mrp: it.mrp, gst_percent: it.gst_percent, discount: it.discount,
-        line_total: it.selling_price * it.qty - it.discount,
+        line_total: round2(it.selling_price * it.qty - it.discount),
       }));
       const { error: iErr } = await supabase.from("sale_items").insert(items);
       if (iErr) throw iErr;
@@ -98,7 +102,7 @@ function SalesPOS() {
         invoice_no: sale.invoice_no, created_at: sale.created_at,
         customer_name: customer.name, customer_phone: customer.phone, doctor_name: customer.doctor,
         payment_method: payment, subtotal: totals.subtotal, discount: totals.discount, tax: totals.tax, total: totals.total,
-        items: cart.map((it) => ({ name: it.name, batch: it.batch_no, qty: it.qty, mrp: it.mrp, unit_price: it.selling_price, gst_percent: it.gst_percent, line_total: it.selling_price * it.qty - it.discount })),
+        items: cart.map((it) => ({ name: it.name, batch: it.batch_no, qty: it.qty, mrp: it.mrp, unit_price: it.selling_price, gst_percent: it.gst_percent, line_total: round2(it.selling_price * it.qty - it.discount) })),
       });
 
       toast.success(`Invoice ${sale.invoice_no} generated`);
