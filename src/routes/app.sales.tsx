@@ -141,21 +141,22 @@ function SalesPOS() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Item</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Price</TableHead><TableHead className="text-right">Disc</TableHead><TableHead className="text-right">Total</TableHead><TableHead></TableHead></TableRow>
+                <TableRow><TableHead>Item</TableHead><TableHead className="text-right">MRP</TableHead><TableHead className="text-right">Sell Price</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Disc</TableHead><TableHead className="text-right">Total</TableHead><TableHead></TableHead></TableRow>
               </TableHeader>
               <TableBody>
-                {cart.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Add medicines to start a sale.</TableCell></TableRow>}
+                {cart.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Add medicines to start a sale.</TableCell></TableRow>}
                 {cart.map((it, idx) => (
                   <TableRow key={it.id}>
                     <TableCell>
                       <div className="font-medium">{it.name}</div>
                       <div className="text-xs text-muted-foreground">GST {it.gst_percent}%</div>
                     </TableCell>
+                    <TableCell className="text-right text-muted-foreground line-through">{inr(it.mrp)}</TableCell>
+                    <TableCell className="text-right font-semibold">{inr(it.selling_price)}</TableCell>
                     <TableCell className="text-right">
                       <Input type="number" min={1} max={it.stock_qty} value={it.qty} className="w-20 ml-auto"
                         onChange={(e) => setCart((c) => c.map((x, i) => i === idx ? { ...x, qty: Math.min(Number(e.target.value), it.stock_qty) } : x))} />
                     </TableCell>
-                    <TableCell className="text-right">{inr(it.selling_price)}</TableCell>
                     <TableCell className="text-right">
                       <Input type="number" min={0} value={it.discount} className="w-20 ml-auto"
                         onChange={(e) => setCart((c) => c.map((x, i) => i === idx ? { ...x, discount: Number(e.target.value) } : x))} />
