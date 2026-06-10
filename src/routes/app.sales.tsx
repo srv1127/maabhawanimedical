@@ -156,7 +156,10 @@ function SalesPOS() {
                       <div className="text-xs text-muted-foreground">GST {it.gst_percent}%</div>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground line-through">{inr(it.mrp)}</TableCell>
-                    <TableCell className="text-right font-semibold">{inr(it.selling_price)}</TableCell>
+                    <TableCell className="text-right">
+                      <Input type="number" min={0} step="0.01" value={it.selling_price} className="w-24 ml-auto font-semibold"
+                        onChange={(e) => setCart((c) => c.map((x, i) => i === idx ? { ...x, selling_price: round2(Math.max(0, Number(e.target.value))) } : x))} />
+                    </TableCell>
                     <TableCell className="text-right">
                       <Input type="number" min={1} max={it.stock_qty} value={it.qty} className="w-20 ml-auto"
                         onChange={(e) => setCart((c) => c.map((x, i) => i === idx ? { ...x, qty: Math.min(Number(e.target.value), it.stock_qty) } : x))} />
@@ -165,7 +168,7 @@ function SalesPOS() {
                       <Input type="number" min={0} value={it.discount} className="w-20 ml-auto"
                         onChange={(e) => setCart((c) => c.map((x, i) => i === idx ? { ...x, discount: Number(e.target.value) } : x))} />
                     </TableCell>
-                    <TableCell className="text-right font-semibold">{inr(it.selling_price * it.qty - it.discount)}</TableCell>
+                    <TableCell className="text-right font-semibold">{inr(round2(it.selling_price * it.qty - it.discount))}</TableCell>
                     <TableCell><Button size="icon" variant="ghost" onClick={() => setCart((c) => c.filter((_, i) => i !== idx))}><Trash2 className="size-4" /></Button></TableCell>
                   </TableRow>
                 ))}
