@@ -1,3 +1,5 @@
+export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
 export const inr = (n: number | string | null | undefined) => {
   const v = Number(n ?? 0);
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(v);
