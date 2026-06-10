@@ -29,7 +29,7 @@ function Landing() {
             <div className="size-9 rounded-lg bg-gradient-primary grid place-items-center shadow-elegant">
               <Pill className="size-5 text-primary-foreground" />
             </div>
-            <span className="font-bold">Maa Bhawani Medical</span>
+            <span className="font-bold">Pharma Core</span>
           </Link>
           <Link to="/auth"><Button>Sign in</Button></Link>
         </div>
@@ -65,7 +65,7 @@ function Landing() {
       </section>
 
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Maa Bhawani Medical
+        © {new Date().getFullYear()} Pharma Core
       </footer>
     </div>
   );
