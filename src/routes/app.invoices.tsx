@@ -11,6 +11,9 @@ import { inr, fmtDateTime } from "@/lib/format";
 import { Eye, Printer } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/pdf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SimplePagination, paginate } from "@/components/simple-pagination";
+
+const PAGE_SIZE = 25;
 
 export const Route = createFileRoute("/app/invoices")({
   head: () => ({ meta: [{ title: "Invoices — PharmaCore" }] }),
@@ -21,6 +24,7 @@ function Invoices() {
   const [from, setFrom] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [viewId, setViewId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data: sales = [] } = useQuery({
     queryKey: ["invoices", from, to],
@@ -84,7 +88,7 @@ function Invoices() {
           </TableHeader>
           <TableBody>
             {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No invoices in this range.</TableCell></TableRow>}
-            {sales.map((s: any) => (
+            {paginate(sales, page, PAGE_SIZE).rows.map((s: any) => (
               <TableRow key={s.id}>
                 <TableCell className="font-mono text-xs">{s.invoice_no}</TableCell>
                 <TableCell className="text-xs">{fmtDateTime(s.created_at)}</TableCell>
@@ -100,6 +104,7 @@ function Invoices() {
             ))}
           </TableBody>
         </Table>
+        <SimplePagination page={page} pages={paginate(sales, page, PAGE_SIZE).pages} total={sales.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </Card>
 
       <Dialog open={!!viewId} onOpenChange={(o) => !o && setViewId(null)}>
