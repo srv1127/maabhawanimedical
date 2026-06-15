@@ -270,7 +270,7 @@ function Inventory() {
       <Card className="p-4">
         <div className="relative mb-3">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder="Search by name…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -336,7 +336,9 @@ function Inventory() {
             </TableBody>
           </Table>
         </div>
+        <SimplePagination page={page} pages={paginate(meds, page, PAGE_SIZE).pages} total={meds.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </Card>
+
 
       <Dialog open={!!stockFor} onOpenChange={(o) => !o && setStockFor(null)}>
         <DialogContent>
