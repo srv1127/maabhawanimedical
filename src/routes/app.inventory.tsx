@@ -17,6 +17,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { GuidedMedicineForm, emptyMedicine, type MedicineDraft } from "@/components/medicine-form";
 import { findDuplicates } from "@/lib/dedupe";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SimplePagination, paginate } from "@/components/simple-pagination";
+
+const PAGE_SIZE = 25;
 
 export const Route = createFileRoute("/app/inventory")({
   head: () => ({ meta: [{ title: "Inventory — PharmaCore" }] }),
@@ -44,6 +47,7 @@ function Inventory() {
   const [stockQty, setStockQty] = useState(0);
   const [stockNote, setStockNote] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -266,7 +270,7 @@ function Inventory() {
       <Card className="p-4">
         <div className="relative mb-3">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder="Search by name…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -290,7 +294,7 @@ function Inventory() {
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
               {!isLoading && meds.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No medicines yet.</TableCell></TableRow>}
-              {meds.map((m) => {
+              {paginate(meds, page, PAGE_SIZE).rows.map((m) => {
                 const exp = daysUntil(m.expiry_date);
                 return (
                   <TableRow key={m.id} data-state={selected.has(m.id) ? "selected" : undefined}>
@@ -332,7 +336,9 @@ function Inventory() {
             </TableBody>
           </Table>
         </div>
+        <SimplePagination page={page} pages={paginate(meds, page, PAGE_SIZE).pages} total={meds.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </Card>
+
 
       <Dialog open={!!stockFor} onOpenChange={(o) => !o && setStockFor(null)}>
         <DialogContent>
