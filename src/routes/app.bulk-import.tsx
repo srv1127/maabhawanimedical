@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Upload, Save, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { findDuplicates } from "@/lib/dedupe";
-import { SimplePagination, usePaged } from "@/components/simple-pagination";
+import { SimplePagination, paginate } from "@/components/simple-pagination";
 
 export const Route = createFileRoute("/app/bulk-import")({
   head: () => ({ meta: [{ title: "Bulk AI Import — PharmaCore" }] }),
@@ -42,7 +42,7 @@ function BulkImport() {
   const [page, setPage] = useState(1);
 
   const dupCount = useMemo(() => rows.filter((r) => r._dupId).length, [rows]);
-  const paged = usePaged(rows, page, PAGE_SIZE);
+  const paged = paginate(rows, page, PAGE_SIZE);
 
   const checkDuplicates = async (rs: Row[]): Promise<Row[]> => {
     const { data: existing } = await supabase

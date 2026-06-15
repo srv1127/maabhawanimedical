@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { GuidedMedicineForm, emptyMedicine, type MedicineDraft } from "@/components/medicine-form";
 import { findDuplicates } from "@/lib/dedupe";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SimplePagination, usePaged } from "@/components/simple-pagination";
+import { SimplePagination, paginate } from "@/components/simple-pagination";
 
 const PAGE_SIZE = 25;
 
@@ -294,7 +294,7 @@ function Inventory() {
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
               {!isLoading && meds.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No medicines yet.</TableCell></TableRow>}
-              {(() => { const paged = usePaged(meds, page, PAGE_SIZE); return paged.rows; })().map((m) => {
+              {paginate(meds, page, PAGE_SIZE).rows.map((m) => {
                 const exp = daysUntil(m.expiry_date);
                 return (
                   <TableRow key={m.id} data-state={selected.has(m.id) ? "selected" : undefined}>

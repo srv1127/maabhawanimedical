@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export function usePaged<T>(items: T[], page: number, pageSize: number) {
+export function paginate<T>(items: T[], page: number, pageSize: number) {
   const total = items.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const safe = Math.min(Math.max(1, page), pages);
