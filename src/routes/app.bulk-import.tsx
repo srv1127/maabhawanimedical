@@ -200,6 +200,36 @@ function BulkImport() {
         </Tabs>
       </Card>
 
+      <Card className="p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <Info className="size-4 text-primary mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <div className="font-semibold mb-1">Duplicate detection rules</div>
+            <ul className="text-xs text-muted-foreground space-y-0.5 list-disc pl-4">
+              <li><strong>Barcode</strong> — exact match on normalized barcode overrides everything (score = 1.00).</li>
+              <li><strong>Name / generic + strength</strong> — token-set similarity on normalized name and generic name (dosage units like mg/ml stripped); generic weighted 0.9×.</li>
+              <li><strong>Batch</strong> — same batch number on top of a name match ≥ 0.5 adds +0.15 to the score.</li>
+              <li><strong>Similarity threshold</strong> — rows scoring ≥ the threshold below are flagged as duplicates.</li>
+            </ul>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Label className="text-sm">Similarity threshold</Label>
+          <div className="flex items-center gap-3 flex-1 min-w-64 max-w-md">
+            <Slider
+              value={[Math.round(threshold * 100)]}
+              min={50} max={100} step={1}
+              onValueChange={(v) => { const t = v[0] / 100; setThreshold(t); rerunMatching(t); }}
+            />
+            <span className="text-sm font-mono w-14 text-right">{Math.round(threshold * 100)}%</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {threshold >= 0.9 ? "Strict — only near-identical matches" : threshold >= 0.75 ? "Balanced (recommended)" : "Loose — more false positives"}
+          </span>
+        </div>
+      </Card>
+
+
       {rows.length > 0 && (
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
