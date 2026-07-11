@@ -50,7 +50,10 @@ function BulkImport() {
   const matchRows = (rs: Row[], list: any[], th: number): Row[] =>
     rs.map((r) => {
       const m = findDuplicates(r, list, { threshold: th, limit: 1 })[0];
-      if (m) return { ...r, _dupId: m.item.id, _dupName: m.item.name, _action: (r._action === "skip" || r._action === "new" ? r._action : "merge") as const };
+      if (m) {
+        const action: "new" | "merge" | "skip" = r._action === "skip" || r._action === "new" ? r._action : "merge";
+        return { ...r, _dupId: m.item.id, _dupName: m.item.name, _action: action };
+      }
       return { ...r, _dupId: null, _dupName: null, _action: "new" as const };
     });
 
