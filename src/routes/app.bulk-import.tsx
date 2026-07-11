@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { bulkExtractMedicines } from "@/lib/bulk-import.functions";
 import { supabase } from "@/integrations/supabase/client";
