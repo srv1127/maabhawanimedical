@@ -41,9 +41,18 @@ function BulkImport() {
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
+  const [threshold, setThreshold] = useState(0.82);
+  const [lastExisting, setLastExisting] = useState<any[] | null>(null);
 
   const dupCount = useMemo(() => rows.filter((r) => r._dupId).length, [rows]);
   const paged = paginate(rows, page, PAGE_SIZE);
+
+  const matchRows = (rs: Row[], list: any[], th: number): Row[] =>
+    rs.map((r) => {
+      const m = findDuplicates(r, list, { threshold: th, limit: 1 })[0];
+      if (m) return { ...r, _dupId: m.item.id, _dupName: m.item.name, _action: (r._action === "skip" || r._action === "new" ? r._action : "merge") as const };
+      return { ...r, _dupId: null, _dupName: null, _action: "new" as const };
+    });
 
   const checkDuplicates = async (rs: Row[]): Promise<Row[]> => {
     const { data: existing } = await supabase
@@ -52,12 +61,15 @@ function BulkImport() {
       .eq("is_active", true)
       .limit(5000);
     const list = (existing ?? []) as any[];
-    return rs.map((r) => {
-      const m = findDuplicates(r, list, { threshold: 0.82, limit: 1 })[0];
-      if (m) return { ...r, _dupId: m.item.id, _dupName: m.item.name, _action: "merge" as const };
-      return { ...r, _dupId: null, _dupName: null, _action: "new" as const };
-    });
+    setLastExisting(list);
+    return matchRows(rs, list, threshold);
   };
+
+  const rerunMatching = (th: number) => {
+    if (!lastExisting || !rows.length) return;
+    setRows((rs) => matchRows(rs, lastExisting, th));
+  };
+
 
   const runText = async () => {
     if (!text.trim()) return toast.error("Paste a list first");
