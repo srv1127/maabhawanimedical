@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { bulkExtractMedicines } from "@/lib/bulk-import.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,8 +41,23 @@ function BulkImport() {
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
+  const thresholdKey = user ? `bulkImport.dupThreshold:${user.id}` : null;
   const [threshold, setThreshold] = useState(0.82);
+  const [thresholdLoaded, setThresholdLoaded] = useState(false);
   const [lastExisting, setLastExisting] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    if (!thresholdKey) return;
+    const stored = localStorage.getItem(thresholdKey);
+    const n = stored ? Number(stored) : NaN;
+    if (Number.isFinite(n) && n >= 0.5 && n <= 1) setThreshold(n);
+    setThresholdLoaded(true);
+  }, [thresholdKey]);
+
+  useEffect(() => {
+    if (!thresholdKey || !thresholdLoaded) return;
+    localStorage.setItem(thresholdKey, String(threshold));
+  }, [threshold, thresholdKey, thresholdLoaded]);
 
   const dupCount = useMemo(() => rows.filter((r) => r._dupId).length, [rows]);
   const paged = paginate(rows, page, PAGE_SIZE);
