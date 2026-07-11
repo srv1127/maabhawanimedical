@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Upload, Save, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Sparkles, Upload, Save, Trash2, Loader2, AlertTriangle, Info } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { findDuplicates } from "@/lib/dedupe";
 import { SimplePagination, paginate } from "@/components/simple-pagination";
@@ -40,9 +41,21 @@ function BulkImport() {
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
+  const [threshold, setThreshold] = useState(0.82);
+  const [lastExisting, setLastExisting] = useState<any[] | null>(null);
 
   const dupCount = useMemo(() => rows.filter((r) => r._dupId).length, [rows]);
   const paged = paginate(rows, page, PAGE_SIZE);
+
+  const matchRows = (rs: Row[], list: any[], th: number): Row[] =>
+    rs.map((r) => {
+      const m = findDuplicates(r, list, { threshold: th, limit: 1 })[0];
+      if (m) {
+        const action: "new" | "merge" | "skip" = r._action === "skip" || r._action === "new" ? r._action : "merge";
+        return { ...r, _dupId: m.item.id, _dupName: m.item.name, _action: action };
+      }
+      return { ...r, _dupId: null, _dupName: null, _action: "new" as const };
+    });
 
   const checkDuplicates = async (rs: Row[]): Promise<Row[]> => {
     const { data: existing } = await supabase
@@ -51,12 +64,15 @@ function BulkImport() {
       .eq("is_active", true)
       .limit(5000);
     const list = (existing ?? []) as any[];
-    return rs.map((r) => {
-      const m = findDuplicates(r, list, { threshold: 0.82, limit: 1 })[0];
-      if (m) return { ...r, _dupId: m.item.id, _dupName: m.item.name, _action: "merge" as const };
-      return { ...r, _dupId: null, _dupName: null, _action: "new" as const };
-    });
+    setLastExisting(list);
+    return matchRows(rs, list, threshold);
   };
+
+  const rerunMatching = (th: number) => {
+    if (!lastExisting || !rows.length) return;
+    setRows((rs) => matchRows(rs, lastExisting, th));
+  };
+
 
   const runText = async () => {
     if (!text.trim()) return toast.error("Paste a list first");
@@ -183,6 +199,36 @@ function BulkImport() {
           </TabsContent>
         </Tabs>
       </Card>
+
+      <Card className="p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <Info className="size-4 text-primary mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <div className="font-semibold mb-1">Duplicate detection rules</div>
+            <ul className="text-xs text-muted-foreground space-y-0.5 list-disc pl-4">
+              <li><strong>Barcode</strong> — exact match on normalized barcode overrides everything (score = 1.00).</li>
+              <li><strong>Name / generic + strength</strong> — token-set similarity on normalized name and generic name (dosage units like mg/ml stripped); generic weighted 0.9×.</li>
+              <li><strong>Batch</strong> — same batch number on top of a name match ≥ 0.5 adds +0.15 to the score.</li>
+              <li><strong>Similarity threshold</strong> — rows scoring ≥ the threshold below are flagged as duplicates.</li>
+            </ul>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Label className="text-sm">Similarity threshold</Label>
+          <div className="flex items-center gap-3 flex-1 min-w-64 max-w-md">
+            <Slider
+              value={[Math.round(threshold * 100)]}
+              min={50} max={100} step={1}
+              onValueChange={(v) => { const t = v[0] / 100; setThreshold(t); rerunMatching(t); }}
+            />
+            <span className="text-sm font-mono w-14 text-right">{Math.round(threshold * 100)}%</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {threshold >= 0.9 ? "Strict — only near-identical matches" : threshold >= 0.75 ? "Balanced (recommended)" : "Loose — more false positives"}
+          </span>
+        </div>
+      </Card>
+
 
       {rows.length > 0 && (
         <Card className="p-4">
