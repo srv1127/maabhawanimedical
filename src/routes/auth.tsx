@@ -27,7 +27,7 @@ function safeNext(next: string | undefined): string {
 
 function AuthPage() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
+  
   const { next } = Route.useSearch();
   const target = safeNext(next);
   const [email, setEmail] = useState("");
