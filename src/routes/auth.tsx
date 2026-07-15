@@ -12,20 +12,32 @@ import { Pill } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — PharmaCore" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   component: AuthPage,
 });
+
+// Only allow same-origin relative paths as the post-auth redirect.
+function safeNext(next: string | undefined): string {
+  if (!next) return "/app/dashboard";
+  if (!next.startsWith("/") || next.startsWith("//")) return "/app/dashboard";
+  return next;
+}
 
 function AuthPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const target = safeNext(next);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/app/dashboard" });
-  }, [user, loading, navigate]);
+    if (!loading && user) window.location.href = target;
+  }, [user, loading, target]);
 
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +45,7 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) toast.error(error.message);
-    else { toast.success("Welcome back"); navigate({ to: "/app/dashboard" }); }
+    else { toast.success("Welcome back"); window.location.href = target; }
   };
 
   const signup = async (e: React.FormEvent) => {
@@ -41,7 +53,7 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { emailRedirectTo: `${window.location.origin}/app/dashboard`, data: { full_name: fullName } },
+      options: { emailRedirectTo: `${window.location.origin}${target}`, data: { full_name: fullName } },
     });
     setBusy(false);
     if (error) toast.error(error.message);
